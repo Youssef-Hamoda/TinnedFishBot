@@ -2,20 +2,18 @@ import subprocess
 import json
 import os
 from GetVids import get_vid_ids
+from AudioHandling import transcribe
 
 VIDEOS_PATH = "./Videos/"
 
-def get_vids() :
-    #API Implementation in GetVids.py
-    return get_vid_ids()
-
 def download(video_id) :
-    result = subprocess.run(['yt-dlp', '-P', './Videos','-o', f'"%(id)s"', '-t', 'mp4', f'https://youtube.com/watch?v={video_id}'], 
+    result = subprocess.run(['yt-dlp', '-P', './Videos','-o', f'"%(id)s"', '--merge-output-format', 'mp4', f'https://youtube.com/watch?v={video_id}'], 
         text=True, check=True)
     
-    if (result.check_returncode() != 0):
-        delete(f'{video_id}')
-        return 1
+    try: result.check_returncode()
+    except CompletedProcessError:
+        delete(f'#{video_id}#.mp4')
+        raise Exception("Download Failed\n")
     
     print(f"Video downloaded: {video_id}.mp4")
 
@@ -25,8 +23,8 @@ def delete(video_id) :
     except FileNotFoundError:
         pass
 
-def main():
-    video_ids = get_vids()
+def download_test():
+    video_ids = get_vids_ids()
     
     if video_ids:
     
@@ -41,6 +39,27 @@ def main():
         delete(video_ids[0][0])
     else:
         print("getVidIds failed, json returned is null")
+
+def main ():
+    video_ids = get_vid_ids()
+
+    if video_ids:
+        print(f"Retrieved {len(video_ids)} videos")
+
+        i = 1
+        for video in video_ids:
+            print(f'Downloading video #{i} \n ID: {video[0]}\n Title: {video[1]}')
+            
+            try: download(video[0])
+            except Exception:
+                print(f'Skipping video #{i}')
+                i += 1
+                continue
+
+            text = transcribe(video[0], True)
+            print(f'{text["text"]}')
+
     
 if __name__=='__main__':
+
     main()
